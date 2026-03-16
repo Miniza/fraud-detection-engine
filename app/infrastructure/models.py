@@ -1,9 +1,36 @@
-from sqlalchemy import Column, String, Float, DateTime, Boolean, ForeignKey, Integer
+from sqlalchemy import (
+    Column,
+    String,
+    Float,
+    DateTime,
+    Boolean,
+    ForeignKey,
+    Integer,
+    UniqueConstraint,
+    text,  # Added this
+)
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.infrastructure.database_setup import Base
 import uuid
+
+
+class ProcessedEvent(Base):
+    __tablename__ = "processed_events"
+
+    id = Column(
+        PG_UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    transaction_id = Column(PG_UUID(as_uuid=True), nullable=False, index=True)
+    rule_name = Column(String, nullable=False, index=True)
+    processed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("transaction_id", "rule_name", name="uq_tx_rule"),
+    )
 
 
 class Transaction(Base):
@@ -24,9 +51,12 @@ class Transaction(Base):
 class FraudAlert(Base):
     __tablename__ = "fraud_alerts"
 
+    # For consistency, use server_default or default for the ID
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     transaction_id = Column(
-        PG_UUID(as_uuid=True), ForeignKey("transactions.id"), nullable=False
+        PG_UUID(as_uuid=True),
+        ForeignKey("transactions.id", ondelete="CASCADE"),
+        nullable=False,
     )
     rule_name = Column(String, nullable=False)
     is_flagged = Column(Boolean, default=False)

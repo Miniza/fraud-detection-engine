@@ -6,6 +6,8 @@ This project demonstrates a **production-style fan-out architecture** where fina
 
 The system simulates how modern financial platforms evaluate transactions using **distributed workers and asynchronous processing**.
 
+The platform also implements **resilience and reliability patterns** such as **Idempotency** and the **Circuit Breaker Pattern** to ensure safe and fault-tolerant message processing.
+
 ---
 
 # Architecture Overview
@@ -16,6 +18,7 @@ The system uses a **fan-out messaging pattern** to evaluate transactions across 
 
 1. **API Gateway (Producer)**
    - A FastAPI service receives transaction requests.
+   - An **idempotency key** is used to prevent duplicate transaction processing.
    - The transaction event is published to an **SNS Topic**.
 
 2. **Fan-Out Layer**
@@ -33,6 +36,11 @@ Each worker evaluates the transaction independently:
 
 - **Blacklist Rule**
   - Checks if a merchant or user is restricted.
+
+Each worker:
+
+- Implements **idempotent message processing** to prevent duplicate rule evaluation.
+- Uses a **circuit breaker** to protect downstream services such as the database.
 
 4. **Aggregator Worker**
 
@@ -76,6 +84,73 @@ This architecture enables:
 - Independent worker scaling
 - Fault isolation
 - Asynchronous processing
+- Safe retries with idempotent consumers
+- Resilience against downstream failures
+
+---
+
+# Resilience Patterns
+
+To support **high reliability in distributed systems**, the platform implements the following patterns.
+
+---
+
+## Idempotency
+
+In distributed event-driven systems, **duplicate messages can occur** due to retries, network issues, or SQS redelivery.
+
+To ensure **exactly-once logical processing**, the system implements **idempotent consumers**.
+
+### How It Works
+
+- Each transaction includes a **unique transaction_id**.
+- Workers check if the transaction has **already been processed** before executing rule logic.
+- If a duplicate event is received, the worker **skips processing**.
+
+### Benefits
+
+- Prevents duplicate fraud evaluations
+- Ensures safe message retries
+- Supports **at-least-once delivery guarantees** from SQS
+
+Example protection scenarios:
+
+- Worker crashes after processing but before acknowledgement
+- SQS message redelivery
+- API retry sending the same transaction
+
+---
+
+## Circuit Breaker Pattern
+
+The **Circuit Breaker Pattern** protects the system from cascading failures when dependent services become unavailable.
+
+In this system, workers use a circuit breaker around **database operations and external service calls**.
+
+### Circuit States
+
+The circuit breaker operates in three states:
+
+**Closed**
+
+- Normal operation
+- Requests flow normally
+
+**Open**
+
+- Triggered after repeated failures
+- Requests fail immediately to prevent overload
+
+**Half-Open**
+
+- Allows limited test requests
+- If successful, the circuit closes again
+
+### Benefits
+
+- Prevents cascading failures
+- Reduces pressure on unhealthy services
+- Improves overall system stability
 
 ---
 
@@ -102,6 +177,8 @@ This architecture enables:
 - Independent worker architecture
 - Aggregated fraud decision engine
 - Async Python processing
+- **Idempotent message processing**
+- **Circuit breaker fault protection**
 - System observability with Prometheus and Grafana
 - Fully containerized development environment
 

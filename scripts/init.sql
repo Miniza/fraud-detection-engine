@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS transactions (
 );
 
 CREATE TABLE IF NOT EXISTS fraud_alerts (
-    -- FIX: Change SERIAL to UUID
     id UUID PRIMARY KEY, 
     transaction_id UUID REFERENCES transactions(id) ON DELETE CASCADE,
     rule_name VARCHAR(50) NOT NULL,
@@ -24,6 +23,15 @@ CREATE TABLE IF NOT EXISTS blacklisted_merchants (
     merchant_id VARCHAR(50) UNIQUE NOT NULL,
     reason TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- This table tracks which transactions have been processed by which rules to ensure idempotency.
+CREATE TABLE IF NOT EXISTS processed_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id UUID NOT NULL,
+    rule_name VARCHAR(50) NOT NULL,
+    processed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_tx_rule UNIQUE (transaction_id, rule_name)
 );
 
 -- whitelist/blacklist data for testing and demo purposes
@@ -47,3 +55,4 @@ VALUES
 ON CONFLICT (merchant_id) DO NOTHING;
 
 CREATE INDEX idx_fraud_alerts_transaction_id ON fraud_alerts(transaction_id);
+CREATE INDEX idx_processed_events_tx ON processed_events(transaction_id);
