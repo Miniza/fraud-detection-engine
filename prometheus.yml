@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 10s
+
+scrape_configs:
+  - job_name: "fraud-services"
+    static_configs:
+      - targets:
+          - "api:8000"
+          - "worker-amount:9000"
+          - "worker-blacklist:9000"
+          - "worker-velocity:9000"
+          - "worker-aggregator:9000"
