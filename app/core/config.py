@@ -26,8 +26,6 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
-        # This allows extra env vars in the file without crashing,
-        # but the ones we use MUST be defined above.
         extra = "ignore"
 
 

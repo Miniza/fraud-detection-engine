@@ -7,21 +7,17 @@ from app.core.config import settings
 from app.infrastructure.database_setup import SessionLocal
 from app.infrastructure.models import Transaction, FraudAlert
 
-# 1. Import metrics utilities
 from app.core.metrics import start_metrics_server, RULE_LATENCY, TX_PROCESSED_TOTAL
 
-# --- Constants ---
 QUEUE_NAME = "velocity-queue"
 
 
 async def process_velocity_rule():
-    # 2. Start the metrics server for Prometheus scraping
     start_metrics_server()
 
     sqs = get_boto_client("sqs")
     queue_url = None
 
-    # Resilient Queue Discovery
     print(f"🚀 Velocity Worker waiting for '{QUEUE_NAME}'...")
     while not queue_url:
         try:
@@ -41,7 +37,6 @@ async def process_velocity_rule():
                 continue
 
             for msg in response["Messages"]:
-                # 3. Track execution time (critical for DB-heavy rules)
                 with RULE_LATENCY.labels(rule_name="velocity_rule").time():
                     try:
                         body = json.loads(msg["Body"])
@@ -53,7 +48,6 @@ async def process_velocity_rule():
                         user_id = data["user_id"]
 
                         async with SessionLocal() as db:
-                            # Configurable Time Window
                             lookback_limit = datetime.now(timezone.utc) - timedelta(
                                 minutes=settings.VELOCITY_WINDOW_MINS
                             )
@@ -65,8 +59,6 @@ async def process_velocity_rule():
 
                             result = await db.execute(query)
                             count = result.scalar()
-
-                            # Configurable Decision Logic
                             is_flagged = count > settings.VELOCITY_THRESHOLD
                             reason = (
                                 f"Velocity limit exceeded: {count} transactions in {settings.VELOCITY_WINDOW_MINS} mins"
@@ -74,7 +66,6 @@ async def process_velocity_rule():
                                 else "Within limits"
                             )
 
-                            # Record the Result
                             alert = FraudAlert(
                                 transaction_id=tx_id,
                                 rule_name="VELOCITY_RULE",
@@ -84,7 +75,6 @@ async def process_velocity_rule():
                             db.add(alert)
                             await db.commit()
 
-                        # 4. Increment business outcome counter
                         res_label = "flagged" if is_flagged else "cleared"
                         TX_PROCESSED_TOTAL.labels(
                             service="velocity_rule", status=res_label
@@ -92,7 +82,6 @@ async def process_velocity_rule():
 
                         print(f"🚀 [Velocity Rule] TX {tx_id}: {res_label.upper()}")
 
-                        # Cleanup
                         sqs.delete_message(
                             QueueUrl=queue_url, ReceiptHandle=msg["ReceiptHandle"]
                         )
@@ -101,7 +90,7 @@ async def process_velocity_rule():
                         print(f"❌ Error processing message: {e}")
 
         except Exception as e:
-            print(f"❌ SQS Error: {e}")
+            print(f"SQS Error: {e}")
             await asyncio.sleep(5)
 
 

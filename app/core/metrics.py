@@ -1,8 +1,6 @@
 from prometheus_client import Counter, Histogram, CollectorRegistry, start_http_server
 from app.core.config import settings
 
-# We use a custom registry to avoid "Metric already registered" errors
-# if the worker restarts or code is re-imported.
 REGISTRY = CollectorRegistry()
 
 # Business Metrics

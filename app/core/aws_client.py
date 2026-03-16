@@ -1,4 +1,3 @@
-# app/core/aws_client.py
 import boto3
 from .config import settings
 

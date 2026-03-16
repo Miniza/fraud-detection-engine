@@ -60,7 +60,6 @@ async def process_amount_rule():
                             db.add(alert)
                             await db.commit()
 
-                        # 4. Increment the counter with labels for status
                         res_label = "flagged" if is_flagged else "cleared"
                         TX_PROCESSED_TOTAL.labels(
                             service="amount_rule", status=res_label

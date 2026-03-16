@@ -1,6 +1,4 @@
 from sqlalchemy import Column, String, Float, DateTime, Boolean, ForeignKey, Integer
-
-# Use the Postgres-specific UUID for reliability
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -11,7 +9,6 @@ import uuid
 class Transaction(Base):
     __tablename__ = "transactions"
 
-    # CHANGE: Use PG_UUID instead of String
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
@@ -28,7 +25,6 @@ class FraudAlert(Base):
     __tablename__ = "fraud_alerts"
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    # CHANGE: transaction_id must match the parent ID type exactly
     transaction_id = Column(
         PG_UUID(as_uuid=True), ForeignKey("transactions.id"), nullable=False
     )

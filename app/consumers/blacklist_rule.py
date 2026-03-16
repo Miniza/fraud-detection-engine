@@ -6,11 +6,8 @@ from app.core.aws_client import get_boto_client
 from app.core.config import settings
 from app.infrastructure.database_setup import SessionLocal
 from app.infrastructure.models import FraudAlert, BlacklistedMerchant
-
-# 1. Import metrics
 from app.core.metrics import start_metrics_server, RULE_LATENCY, TX_PROCESSED_TOTAL
 
-# --- Constants ---
 QUEUE_NAME = "blacklist-queue"
 BLACK_LIST_CACHE = set()
 
@@ -25,22 +22,21 @@ async def refresh_blacklist_cache():
                 new_set = set(result.scalars().all())
                 BLACK_LIST_CACHE = new_set
                 print(
-                    f"🔄 Blacklist Cache Synced: {len(BLACK_LIST_CACHE)} merchants loaded."
+                    f"Blacklist Cache Synced: {len(BLACK_LIST_CACHE)} merchants loaded."
                 )
         except Exception as e:
-            print(f"❌ Cache refresh failed: {e}")
+            print(f"Cache refresh failed: {e}")
 
         await asyncio.sleep(300)
 
 
 async def process_blacklist_rule():
-    # 2. Start the metrics server
     start_metrics_server()
 
     sqs = get_boto_client("sqs")
     queue_url = None
 
-    print(f"🚫 Blacklist Rule Worker waiting for '{QUEUE_NAME}'...")
+    print(f"Blacklist Rule Worker waiting for '{QUEUE_NAME}'...")
     while not queue_url:
         try:
             response = sqs.get_queue_url(QueueName=QUEUE_NAME)
@@ -49,15 +45,14 @@ async def process_blacklist_rule():
         except Exception:
             await asyncio.sleep(2)
 
-    # 3. Initial Cache Hydration
     try:
         async with SessionLocal() as db:
             result = await db.execute(select(BlacklistedMerchant.merchant_id))
             global BLACK_LIST_CACHE
             BLACK_LIST_CACHE = set(result.scalars().all())
-            print(f"✅ Initial Blacklist Cache Loaded: {len(BLACK_LIST_CACHE)} items.")
+            print(f"Initial Blacklist Cache Loaded: {len(BLACK_LIST_CACHE)} items.")
     except Exception as e:
-        print(f"⚠️ Initial cache load failed, starting anyway: {e}")
+        print(f"Initial cache load failed, starting anyway: {e}")
 
     asyncio.create_task(refresh_blacklist_cache())
 
@@ -71,7 +66,6 @@ async def process_blacklist_rule():
                 continue
 
             for msg in response["Messages"]:
-                # 4. Wrap the check in the latency timer
                 with RULE_LATENCY.labels(rule_name="blacklist_rule").time():
                     try:
                         body = json.loads(msg["Body"])
@@ -105,17 +99,17 @@ async def process_blacklist_rule():
                             service="blacklist_rule", status=res_label
                         ).inc()
 
-                        print(f"🚫 [Blacklist Rule] TX {tx_id}: {res_label.upper()}")
+                        print(f"[Blacklist Rule] TX {tx_id}: {res_label.upper()}")
 
                         sqs.delete_message(
                             QueueUrl=queue_url, ReceiptHandle=msg["ReceiptHandle"]
                         )
 
                     except Exception as e:
-                        print(f"❌ Error processing message: {e}")
+                        print(f"Error processing message: {e}")
 
         except Exception as e:
-            print(f"❌ SQS Error: {e}")
+            print(f"SQS Error: {e}")
             await asyncio.sleep(5)
 
 

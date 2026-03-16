@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS blacklisted_merchants (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Seed some initial data
+-- whitelist/blacklist data for testing and demo purposes
 INSERT INTO blacklisted_merchants (merchant_id, reason)
 VALUES 
     -- High Risk/Fraudulent Entities
@@ -46,5 +46,4 @@ VALUES
     ('suspicious_electronics_store', 'Reported for non-delivery of goods')
 ON CONFLICT (merchant_id) DO NOTHING;
 
--- Optimization: The Aggregator will query by transaction_id
 CREATE INDEX idx_fraud_alerts_transaction_id ON fraud_alerts(transaction_id);

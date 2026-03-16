@@ -15,7 +15,6 @@ class TransactionService:
         tx_id = uuid.uuid4()
         amount_float = float(payload.amount)
 
-        # Create the domain entity
         new_tx = Transaction(
             id=tx_id,
             user_id=payload.user_id,
@@ -23,10 +22,8 @@ class TransactionService:
             status="PENDING",
         )
 
-        # Delegate persistence to the repository
         await self.repo.save(new_tx)
 
-        # Notify downstream via SNS
         self.sns.publish(
             TopicArn=settings.TOPIC_ARN,
             Message=json.dumps(

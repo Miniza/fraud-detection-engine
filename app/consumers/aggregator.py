@@ -66,8 +66,6 @@ async def process_aggregator():
                                 )
                                 await db.commit()
 
-                                # 4. Track Final Business Outcomes
-                                # This allows you to see the Real-Time Approval Rate
                                 TX_PROCESSED_TOTAL.labels(
                                     service="aggregator", status=final_status.lower()
                                 ).inc()
