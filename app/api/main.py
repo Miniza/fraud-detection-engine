@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
-from app.infrastructure.database_setup import engine
+from app.infrastructure.database_setup import initialize_db, engine
 from app.core.config import settings
 from app.api.exceptions import register_exception_handlers
 from app.api.routes import transactions
@@ -14,8 +14,12 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize database on startup
+    await initialize_db()
     yield
-    await engine.dispose()
+    # Dispose engine on shutdown
+    if engine is not None:
+        await engine.dispose()
 
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)

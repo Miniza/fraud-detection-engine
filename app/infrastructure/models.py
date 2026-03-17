@@ -7,7 +7,6 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     UniqueConstraint,
-    text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
@@ -22,7 +21,7 @@ class ProcessedEvent(Base):
     id = Column(
         PG_UUID(as_uuid=True),
         primary_key=True,
-        server_default=text("gen_random_uuid()"),
+        default=uuid.uuid4,
     )
     transaction_id = Column(PG_UUID(as_uuid=True), nullable=False, index=True)
     rule_name = Column(String, nullable=False, index=True)

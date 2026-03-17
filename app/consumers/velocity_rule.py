@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, func
 from app.core.aws_client import get_boto_client
 from app.core.config import settings
-from app.infrastructure.database_setup import SessionLocal
 from app.infrastructure.models import Transaction, FraudAlert
 from app.core.metrics import (
     start_metrics_server,
@@ -15,7 +14,7 @@ from app.core.metrics import (
     WORKER_HEALTH,
     MESSAGE_PROCESSING_ERRORS,
 )
-from app.core.idempotency import idempotent_worker
+from app.core.idempotency import idempotent_worker, get_db_session
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -30,7 +29,7 @@ async def handle_velocity_rule(transaction_id: str, user_id: str) -> bool:
     Protected by idempotency - only executes once per transaction.
     """
     try:
-        async with SessionLocal() as db:
+        async with get_db_session() as db:
             lookback_limit = datetime.now(timezone.utc) - timedelta(
                 minutes=settings.VELOCITY_WINDOW_MINS
             )

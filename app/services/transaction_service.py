@@ -25,7 +25,10 @@ class TransactionService:
                 user_id=payload.user_id,
                 amount=amount_float,
                 status="PENDING",
+                merchant_id=payload.merchant_id,
+                merchant_category=payload.merchant_category,
             )
+
             # Might Lead to dual write issues, with proper resources will have to use outbox transactional pattern to ensure consistency between DB and SNS
             await self.repo.save(new_tx)
 

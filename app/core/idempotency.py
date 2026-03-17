@@ -1,23 +1,47 @@
 import functools
 from sqlalchemy import select
 from app.infrastructure.models import ProcessedEvent
-from app.infrastructure.database_setup import SessionLocal
 from app.core.logger import get_logger
 import uuid
-import functools
+from contextlib import asynccontextmanager
 
 logger = get_logger(__name__)
+
+
+@asynccontextmanager
+async def get_db_session():
+    """
+    Context manager that provides a database session with auto-initialization.
+    If database is not initialized, initializes it on first use.
+    """
+    from app.infrastructure.database_setup import SessionLocal, initialize_db
+
+    # Auto-initialize database if not already done
+    if SessionLocal is None:
+        await initialize_db()
+
+    # Re-import to get the initialized SessionLocal
+    from app.infrastructure.database_setup import (
+        SessionLocal as InitializedSessionLocal,
+    )
+
+    async with InitializedSessionLocal() as session:
+        yield session
 
 
 def idempotent_worker(rule_name: str):
     """
     Decorator to ensure a worker only processes a specific transaction once (Indempotency).
+    Auto-initializes database on first use if not already initialized.
     """
 
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(transaction_id: str, *args, **kwargs):
-            async with SessionLocal() as db:
+            # Look up get_db_session at call time to allow patching in tests
+            get_db_session = globals()["get_db_session"]
+
+            async with get_db_session() as db:
                 # Convert transaction_id to UUID if string
                 tx_uuid = (
                     uuid.UUID(transaction_id)

@@ -4,7 +4,6 @@ import uuid
 from sqlalchemy import select
 from app.core.aws_client import get_boto_client
 from app.core.config import settings
-from app.infrastructure.database_setup import SessionLocal
 from app.infrastructure.models import FraudAlert, BlacklistedMerchant
 from app.core.metrics import (
     start_metrics_server,
@@ -14,7 +13,7 @@ from app.core.metrics import (
     WORKER_HEALTH,
     MESSAGE_PROCESSING_ERRORS,
 )
-from app.core.idempotency import idempotent_worker
+from app.core.idempotency import idempotent_worker, get_db_session
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -37,7 +36,7 @@ async def handle_blacklist_rule(transaction_id: str, merchant_id: str) -> bool:
             else "Merchant cleared"
         )
 
-        async with SessionLocal() as db:
+        async with get_db_session() as db:
             alert = FraudAlert(
                 transaction_id=uuid.UUID(transaction_id),
                 rule_name="BLACKLIST_RULE",
@@ -68,7 +67,7 @@ async def refresh_blacklist_cache():
 
     while True:
         try:
-            async with SessionLocal() as db:
+            async with get_db_session() as db:
                 result = await db.execute(select(BlacklistedMerchant.merchant_id))
                 new_set = set(result.scalars().all())
                 BLACK_LIST_CACHE = new_set
@@ -108,7 +107,7 @@ async def process_blacklist_rule():
             await asyncio.sleep(2)
 
     try:
-        async with SessionLocal() as db:
+        async with get_db_session() as db:
             result = await db.execute(select(BlacklistedMerchant.merchant_id))
             global BLACK_LIST_CACHE
             BLACK_LIST_CACHE = set(result.scalars().all())

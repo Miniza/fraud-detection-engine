@@ -30,7 +30,7 @@ async def handle_aggregation(
     Handles a single transaction aggregation with Circuit Breaker protection.
     """
     try:
-        async with await get_resilient_db() as db:
+        async with get_resilient_db() as db:
 
             # Check if all required rules reported in the DB
             result = await db.execute(

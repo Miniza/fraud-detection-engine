@@ -1,17 +1,15 @@
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
 venv/
 .env
+.pytest_cache
+.venv
 
-# Docker & DB
 postgres_data/
 .docker_temp/
 
-# IDEs
 .vscode/
 .idea/
 
-# OS
 .DS_Store

@@ -198,7 +198,16 @@ Install the following:
 ## Clone the Repository
 
 ```bash
+HTTPS:
+
 git clone https://github.com/Miniza/fraud-detection-engine.git
+cd fraud-detection-engine
+```
+
+```bash
+SSH:
+
+git clone git@github.com:Miniza/fraud-detection-engine.git
 cd fraud-detection-engine
 ```
 
@@ -249,7 +258,7 @@ POST /transactions
   "user_id": "user_12345",
   "amount": 150.5,
   "currency": "ZAR",
-  "merchant_id": "merch_999",
+  "merchant_id": "merch_xyz1",
   "merchant_category": "Retail"
 }
 ```
@@ -259,7 +268,7 @@ POST /transactions
 ```json
 {
   "status": "accepted",
-  "transaction_id": "2607b08f-c862-43fe-b637-01c90da78ad6"
+  "transaction_id": "some-uuid"
 }
 ```
 
@@ -287,10 +296,10 @@ GET /transactions/{transaction_id}
 
 ```json
 {
-  "transaction_id": "2607b08f-c862-43fe-b637-01c90da78ad6",
-  "status": "REJECTED",
+  "transaction_id": "some-id",
+  "status": "ACCEPTED",
   "fraud_summary": {
-    "is_flagged": true,
+    "is_flagged": false,
     "alerts": [
       {
         "rule": "HIGH_AMOUNT_RULE",
@@ -302,12 +311,14 @@ GET /transactions/{transaction_id}
       },
       {
         "rule": "BLACKLIST_RULE",
-        "reason": "Merchant merch_999 is blacklisted"
+        "reason": "Merchant cleared"
       }
     ]
   }
 }
 ```
+
+### NB: IF Status appears as PENDING, You might have to wait a few seconds for the aggragator consumer to finish deciding. The Final Result will always be either APPROVED/REJECTED
 
 ---
 
@@ -469,6 +480,289 @@ http://localhost:3000
 
 ---
 
+# Testing
+
+The project includes comprehensive unit tests covering core fraud detection logic and edge cases.
+
+## Unit Test Suite Overview
+
+**Total Coverage: 28 unit tests**
+
+| Module                 | Tests | Focus                                  |
+| ---------------------- | ----- | -------------------------------------- |
+| **Amount Rule**        | 4     | Boundary conditions, threshold testing |
+| **Velocity Rule**      | 4     | Time windows, transaction counting     |
+| **Blacklist Rule**     | 4     | Cache usage, merchant lookups          |
+| **Idempotency**        | 5     | Deduplication of duplicate messages    |
+| **Service Layer**      | 6     | CRUD operations, SNS publishing        |
+| **Exception Handlers** | 5     | HTTP error codes, response formats     |
+
+---
+
+## Prerequisites for Running Tests
+
+Before running tests, ensure you have:
+
+1. **Python 3.11+** installed
+2. **Dependencies installed**:
+
+```bash
+pip install -r requirements-dev.txt
+
+or
+
+python -m pip install -r requirements-dev.txt #If Scripts are disabled use this
+```
+
+---
+
+## Running Unit Tests
+
+### 1. Run All Unit Tests
+
+```bash
+pytest tests/unit/ -v
+
+or
+
+python -m pytest tests/unit/ -v #if scripts are disabled use this
+```
+
+Output:
+
+```
+============================= test session starts ==============================
+platform <platform> -- Python 3.14.3, pytest-7.4.4, pluggy-1.6.0
+collected 28 items
+
+tests/unit/test_amount_rule.py::test_high_amount_flagged PASSED     [  3%]
+tests/unit/test_amount_rule.py::test_low_amount_not_flagged PASSED  [  7%]
+...
+========================== 28 passed in 1.61s ==========================
+```
+
+### 2. Run Tests with Verbose Output
+
+```bash
+pytest tests/unit/ -v --tb=short
+```
+
+This shows:
+
+- Each test name
+- Pass/fail status
+- Short traceback for failures
+
+### 3. Run Tests Quietly (Summary Only)
+
+```bash
+pytest tests/unit/ -q
+```
+
+Output shows just the final summary:
+
+```
+28 passed in 1.61s
+```
+
+### 4. Run Specific Test File
+
+```bash
+# Test a specific rule
+pytest tests/unit/test_amount_rule.py -v
+
+# Test idempotency
+pytest tests/unit/test_idempotency.py -v
+
+# Test service layer
+pytest tests/unit/test_transaction_service.py -v
+```
+
+### 5. Run Specific Test Function
+
+```bash
+pytest tests/unit/test_amount_rule.py::test_high_amount_flagged -v
+```
+
+### 6. Run Tests and Stop on First Failure
+
+```bash
+pytest tests/unit/ -v -x
+```
+
+### 7. Run Tests with Coverage Report
+
+```bash
+# Generate HTML coverage report
+pytest tests/unit/ --cov=app --cov-report=html
+
+# View report (opens in browser)
+# Windows:
+start htmlcov/index.html
+
+# Mac:
+open htmlcov/index.html
+
+# Linux:
+xdg-open htmlcov/index.html
+```
+
+Coverage report includes:
+
+- Lines covered/executed
+- Coverage percentage per file
+- Uncovered lines highlighted
+
+### 8. Run Tests with Detailed Output
+
+```bash
+pytest tests/unit/ -v --tb=long
+```
+
+Shows full traceback and error details.
+
+### 9. Run Tests Matching a Pattern
+
+```bash
+# Run all velocity tests
+pytest tests/unit/ -v -k velocity
+
+# Run all tests with "flagged" in the name
+pytest tests/unit/ -v -k flagged
+```
+
+---
+
+## Test Execution in Different Environments
+
+### Local Development (Windows/Mac/Linux)
+
+```bash
+cd fraud-detection-engine
+pytest tests/unit/ -v
+```
+
+### In Docker Container
+
+```bash
+# Build container
+docker build -t fraud-engine .
+
+# Run tests inside container
+docker run --rm fraud-engine pytest tests/unit/ -v
+```
+
+### With Docker Compose
+
+```bash
+# Start all services
+docker compose up --build -d
+
+# Run tests in a temporary service
+docker compose run --rm api pytest tests/unit/ -v
+
+# Clean up
+docker compose down
+```
+
+---
+
+## Understanding Test Results
+
+### Passing Tests ✅
+
+```
+test_high_amount_flagged PASSED [  3%]
+```
+
+- Test executed successfully
+- All assertions passed
+- Logic works as expected
+
+### Failing Tests ❌
+
+```
+test_high_amount_flagged FAILED [ 3%]
+AssertionError: assert False == True
+```
+
+- Test condition not met
+- Check error message for details
+- Review test code and implementation
+
+### Skipped Tests ⊘
+
+```
+test_future_feature SKIPPED
+```
+
+- Test marked with `@pytest.mark.skip`
+- Not run but tracked
+
+---
+
+## Test Categories
+
+### Amount Rule: Boundary Testing
+
+Tests verify:
+
+- `amount > threshold` (50,000) → flagged ✅
+- `amount == threshold` → not flagged ✅
+- `amount < threshold` → not flagged ✅
+- Decimal amounts handled correctly ✅
+
+### Velocity Rule: Time Windows
+
+Tests verify:
+
+- 4 transactions in 10-minute window → flagged ✅
+- 3 transactions in window → not flagged ✅
+- Transactions outside window → not counted ✅
+- Time boundary conditions ✅
+
+### Blacklist Rule: Merchant Checks
+
+Tests verify:
+
+- Blacklisted merchant → flagged ✅
+- Non-blacklisted merchant → not flagged ✅
+- Cache usage (fast lookups) → working ✅
+- Null/missing merchant_id → handled gracefully ✅
+
+### Idempotency: Duplicate Prevention
+
+Tests verify:
+
+- First execution → processes and marks as done ✅
+- Second execution (duplicate) → skips (no duplicate alert) ✅
+- Different transactions → both processed independently ✅
+- Same transaction, different rules → both process ✅
+- Exception in processing → not marked as processed (can retry) ✅
+
+### Service Layer: CRUD + Integration
+
+Tests verify:
+
+- Transaction creation → saved to DB ✅
+- Transaction publishing → sent to SNS ✅
+- Transaction retrieval → loads with alerts ✅
+- Transaction with decimal amounts → handled correctly ✅
+- Non-existent transaction → raises 404 error ✅
+- Alert retrieval → includes all fraud results ✅
+
+### Exception Handlers: HTTP Error Codes
+
+Tests verify:
+
+- 404 Not Found → transaction doesn't exist ✅
+- 400 Bad Request → invalid input validation ✅
+- 409 Conflict → database integrity errors ✅
+- 500 Internal Server Error → generic exceptions ✅
+- Error messages → preserved in response ✅
+
+---
+
 # Future Improvements
 
 Potential enhancements:
@@ -479,5 +773,6 @@ Potential enhancements:
 - Kafka-based streaming pipeline
 - Distributed tracing (OpenTelemetry)
 - Multi-region deployment
+- Add Dead Letter Queues for messages that fail processing
 
 ---

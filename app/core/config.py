@@ -1,13 +1,18 @@
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(env_file=".env", extra="ignore")
+
     PROJECT_NAME: str = "Capitec Fraud Engine"
-    DATABASE_URL: str
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://admin:capitec_secret@db:5432/fraud_engine_db"
+    )
     AWS_ENDPOINT_URL: str = "http://aws-mock:5000"
     AWS_REGION: str = "af-south-1"
 
-    # ADD THESE: AWS Credentials
+    # AWS Credentials
     AWS_ACCESS_KEY_ID: str = "testing"
     AWS_SECRET_ACCESS_KEY: str = "testing"
 
@@ -27,10 +32,6 @@ class Settings(BaseSettings):
     @property
     def TOPIC_ARN(self) -> str:
         return f"arn:aws:sns:{self.AWS_REGION}:{self.AWS_ACCOUNT_ID}:transaction-events"
-
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
 
 
 settings = Settings()

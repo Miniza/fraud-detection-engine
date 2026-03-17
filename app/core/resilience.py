@@ -1,8 +1,8 @@
 import logging
+from contextlib import asynccontextmanager
 from circuitbreaker import circuit
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy import text
-from app.infrastructure.database_setup import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +18,28 @@ DB_BREAKER_CONFIG = {
 }
 
 
-@circuit(**DB_BREAKER_CONFIG)
+@asynccontextmanager
 async def get_resilient_db():
     """
-    This function is wrapped by the circuit breaker.
-    If the database is down, this function will raise a
-    CircuitBreakerError without executing the code inside.
+    Context manager with circuit breaker protection.
+    Auto-initializes database if not already initialized.
+    If the database is down, the circuit breaker will raise CircuitBreakerError.
     """
-    async with SessionLocal() as session:
+    from app.infrastructure.database_setup import SessionLocal, initialize_db
+
+    # Auto-initialize database if not already done
+    if SessionLocal is None:
+        await initialize_db()
+
+    # Re-import to get the initialized SessionLocal
+    from app.infrastructure.database_setup import (
+        SessionLocal as InitializedSessionLocal,
+    )
+
+    async with InitializedSessionLocal() as session:
         try:
             await session.execute(text("SELECT 1"))
-            return session
+            yield session
         except (OperationalError, SQLAlchemyError) as e:
             logger.error(f"Database connection failed: {e}")
             raise DatabaseDownError("Database is unreachable")

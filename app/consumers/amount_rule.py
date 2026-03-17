@@ -3,7 +3,6 @@ import asyncio
 import uuid
 from app.core.aws_client import get_boto_client
 from app.core.config import settings
-from app.infrastructure.database_setup import SessionLocal
 from app.infrastructure.models import FraudAlert
 from app.core.metrics import (
     start_metrics_server,
@@ -13,7 +12,7 @@ from app.core.metrics import (
     WORKER_HEALTH,
     MESSAGE_PROCESSING_ERRORS,
 )
-from app.core.idempotency import idempotent_worker
+from app.core.idempotency import idempotent_worker, get_db_session
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -35,7 +34,7 @@ async def handle_amount_rule(transaction_id: str, amount: float) -> bool:
             else "Within limit"
         )
 
-        async with SessionLocal() as db:
+        async with get_db_session() as db:
             alert = FraudAlert(
                 transaction_id=uuid.UUID(transaction_id),
                 rule_name="HIGH_AMOUNT_RULE",

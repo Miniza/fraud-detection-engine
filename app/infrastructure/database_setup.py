@@ -11,17 +11,29 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-engine = create_async_engine(settings.DATABASE_URL, echo=True)
-
-SessionLocal = async_sessionmaker(
-    bind=engine, class_=AsyncSession, expire_on_commit=False
-)
-
 
 class Base(DeclarativeBase):
     pass
 
 
+# Module-level variables initialized lazily
+engine = None
+SessionLocal = None
+
+
+async def initialize_db():
+    """Initialize database engine and session maker."""
+    global engine, SessionLocal
+    if engine is None:
+        engine = create_async_engine(settings.DATABASE_URL, echo=True)
+        SessionLocal = async_sessionmaker(
+            bind=engine, class_=AsyncSession, expire_on_commit=False
+        )
+
+
 async def get_db():
+    """Get database session."""
+    if SessionLocal is None:
+        await initialize_db()
     async with SessionLocal() as session:
         yield session
