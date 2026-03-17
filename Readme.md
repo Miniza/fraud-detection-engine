@@ -449,6 +449,12 @@ The system includes monitoring tools.
 http://localhost:8000/docs
 ```
 
+### Metrics
+
+```
+http://localhost:8000/metrics
+```
+
 ### Prometheus
 
 ```

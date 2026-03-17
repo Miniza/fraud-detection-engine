@@ -21,7 +21,7 @@ class TransactionService:
             amount=amount_float,
             status="PENDING",
         )
-
+        # Might Lead to dual write issues, with proper resources will have to use outbox transactional pattern to ensure consistency between DB and SNS
         await self.repo.save(new_tx)
 
         self.sns.publish(

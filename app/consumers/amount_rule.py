@@ -13,6 +13,9 @@ from app.core.metrics import (
     MESSAGE_PROCESSING_ERRORS,
 )
 from app.core.idempotency import idempotent_worker
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 QUEUE_NAME = "amount-queue"
 
@@ -44,12 +47,13 @@ async def handle_amount_rule(transaction_id: str, amount: float) -> bool:
         res_label = "flagged" if is_flagged else "cleared"
         TX_PROCESSED_TOTAL.labels(service="amount_rule", status=res_label).inc()
 
-        print(f"[Amount Rule] TX {transaction_id}: {res_label.upper()}")
+        logger.info(f"Amount Rule TX {transaction_id}: {res_label.upper()}")
         return True
     except Exception as e:
         MESSAGE_PROCESSING_ERRORS.labels(
             queue_name=QUEUE_NAME, error_category="processing_error"
         ).inc()
+        logger.error(f"Amount Rule processing failed: {e}", exc_info=True)
         raise
 
 
@@ -59,18 +63,19 @@ async def process_amount_rule():
     queue_url = None
     worker_name = "amount_rule_worker"
 
-    print(f"Amount Rule Worker waiting for '{QUEUE_NAME}'...")
+    logger.info(f"Amount Rule Worker waiting for '{QUEUE_NAME}'...")
     while not queue_url:
         try:
             response = sqs.get_queue_url(QueueName=QUEUE_NAME)
             queue_url = response["QueueUrl"]
             WORKER_HEALTH.labels(worker_name=worker_name).set(1)
-            print(f"🚀 Amount Rule connected to: {queue_url}")
+            logger.info(f"🚀 Amount Rule connected to: {queue_url}")
         except Exception as e:
             WORKER_HEALTH.labels(worker_name=worker_name).set(0)
             MESSAGE_PROCESSING_ERRORS.labels(
                 queue_name=QUEUE_NAME, error_category="connection_error"
             ).inc()
+            logger.warning(f"Amount Rule connection failed, retrying...: {e}")
             await asyncio.sleep(2)
 
     while True:

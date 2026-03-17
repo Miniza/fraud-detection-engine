@@ -15,6 +15,9 @@ from app.core.metrics import (
     MESSAGE_PROCESSING_ERRORS,
 )
 from app.core.idempotency import idempotent_worker
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 QUEUE_NAME = "velocity-queue"
 
@@ -57,12 +60,13 @@ async def handle_velocity_rule(transaction_id: str, user_id: str) -> bool:
         res_label = "flagged" if is_flagged else "cleared"
         TX_PROCESSED_TOTAL.labels(service="velocity_rule", status=res_label).inc()
 
-        print(f"[Velocity Rule] TX {transaction_id}: {res_label.upper()}")
+        logger.info(f"Velocity Rule TX {transaction_id}: {res_label.upper()}")
         return True
     except Exception as e:
         MESSAGE_PROCESSING_ERRORS.labels(
             queue_name=QUEUE_NAME, error_category="processing_error"
         ).inc()
+        logger.error(f"Velocity Rule processing failed: {e}", exc_info=True)
         raise
 
 
@@ -72,13 +76,13 @@ async def process_velocity_rule():
     queue_url = None
     worker_name = "velocity_rule_worker"
 
-    print(f"Velocity Worker waiting for '{QUEUE_NAME}'...")
+    logger.info(f"Velocity Worker waiting for '{QUEUE_NAME}'...")
     while not queue_url:
         try:
             response = sqs.get_queue_url(QueueName=QUEUE_NAME)
             queue_url = response["QueueUrl"]
             WORKER_HEALTH.labels(worker_name=worker_name).set(1)
-            print(f"🚀 Velocity Rule connected to: {queue_url}")
+            logger.info(f"🚀 Velocity Rule connected to: {queue_url}")
         except Exception as e:
             WORKER_HEALTH.labels(worker_name=worker_name).set(0)
             MESSAGE_PROCESSING_ERRORS.labels(

@@ -14,7 +14,10 @@ from app.core.metrics import (
 )
 from app.core.idempotency import idempotent_worker
 from app.core.resilience import get_resilient_db
+from app.core.logger import get_logger
 from circuitbreaker import CircuitBreakerError
+
+logger = get_logger(__name__)
 
 QUEUE_NAME = "aggregator-queue"
 
@@ -72,7 +75,7 @@ async def handle_aggregation(
         MESSAGE_PROCESSING_ERRORS.labels(
             queue_name=QUEUE_NAME, error_category="circuit_breaker_open"
         ).inc()
-        print(
+        logger.warning(
             f"Circuit Open: Skipping DB work for {transaction_id}. DB might be under load."
         )
         return False
@@ -80,7 +83,7 @@ async def handle_aggregation(
         MESSAGE_PROCESSING_ERRORS.labels(
             queue_name=QUEUE_NAME, error_category="aggregation_error"
         ).inc()
-        print(f"Aggregator Error: {e}")
+        logger.error(f"Aggregator Error: {e}", exc_info=True)
         return False
 
 
@@ -102,7 +105,7 @@ async def run_worker():
             ).inc()
             await asyncio.sleep(2)
 
-    print(f"🚀 Aggregator listening on {QUEUE_NAME}...")
+    logger.info(f"🚀 Aggregator listening on {QUEUE_NAME}...")
 
     while True:
         try:
@@ -146,14 +149,14 @@ async def run_worker():
                         MESSAGE_PROCESSING_ERRORS.labels(
                             queue_name=QUEUE_NAME, error_category="parsing_error"
                         ).inc()
-                        print(f"Processing Error: {e}")
+                        logger.error(f"❌ Processing Error: {e}", exc_info=True)
 
         except Exception as e:
             WORKER_HEALTH.labels(worker_name=worker_name).set(0)
             MESSAGE_PROCESSING_ERRORS.labels(
                 queue_name=QUEUE_NAME, error_category="sqs_error"
             ).inc()
-            print(f"SQS Connection Error: {e}")
+            logger.error(f"SQS Connection Error: {e}", exc_info=True)
             await asyncio.sleep(5)
 
 

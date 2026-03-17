@@ -6,7 +6,10 @@ from app.api.exceptions import register_exception_handlers
 from app.api.routes import transactions
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from app.core.metrics import REGISTRY, API_REQUEST_LATENCY
+from app.core.logger import get_logger
 import time
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager

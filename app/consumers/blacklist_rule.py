@@ -15,6 +15,9 @@ from app.core.metrics import (
     MESSAGE_PROCESSING_ERRORS,
 )
 from app.core.idempotency import idempotent_worker
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 QUEUE_NAME = "blacklist-queue"
 BLACK_LIST_CACHE = set()
@@ -47,12 +50,13 @@ async def handle_blacklist_rule(transaction_id: str, merchant_id: str) -> bool:
         res_label = "flagged" if is_flagged else "cleared"
         TX_PROCESSED_TOTAL.labels(service="blacklist_rule", status=res_label).inc()
 
-        print(f"[Blacklist Rule] TX {transaction_id}: {res_label.upper()}")
+        logger.info(f"Blacklist Rule TX {transaction_id}: {res_label.upper()}")
         return True
     except Exception as e:
         MESSAGE_PROCESSING_ERRORS.labels(
             queue_name=QUEUE_NAME, error_category="processing_error"
         ).inc()
+        logger.error(f"Blacklist Rule processing failed: {e}", exc_info=True)
         raise
 
 
@@ -65,11 +69,11 @@ async def refresh_blacklist_cache():
                 result = await db.execute(select(BlacklistedMerchant.merchant_id))
                 new_set = set(result.scalars().all())
                 BLACK_LIST_CACHE = new_set
-                print(
+                logger.info(
                     f"Blacklist Cache Synced: {len(BLACK_LIST_CACHE)} merchants loaded."
                 )
         except Exception as e:
-            print(f"Cache refresh failed: {e}")
+            logger.error(f"Cache refresh failed: {e}", exc_info=True)
 
         await asyncio.sleep(300)
 
@@ -80,13 +84,13 @@ async def process_blacklist_rule():
     queue_url = None
     worker_name = "blacklist_rule_worker"
 
-    print(f"Blacklist Rule Worker waiting for '{QUEUE_NAME}'...")
+    logger.info(f"Blacklist Rule Worker waiting for '{QUEUE_NAME}'...")
     while not queue_url:
         try:
             response = sqs.get_queue_url(QueueName=QUEUE_NAME)
             queue_url = response["QueueUrl"]
             WORKER_HEALTH.labels(worker_name=worker_name).set(1)
-            print(f"🚀 Blacklist Rule connected to: {queue_url}")
+            logger.info(f"🚀 Blacklist Rule connected to: {queue_url}")
         except Exception as e:
             WORKER_HEALTH.labels(worker_name=worker_name).set(0)
             MESSAGE_PROCESSING_ERRORS.labels(
@@ -99,7 +103,9 @@ async def process_blacklist_rule():
             result = await db.execute(select(BlacklistedMerchant.merchant_id))
             global BLACK_LIST_CACHE
             BLACK_LIST_CACHE = set(result.scalars().all())
-            print(f"Initial Blacklist Cache Loaded: {len(BLACK_LIST_CACHE)} items.")
+            logger.info(
+                f"Initial Blacklist Cache Loaded: {len(BLACK_LIST_CACHE)} items."
+            )
     except Exception as e:
         MESSAGE_PROCESSING_ERRORS.labels(
             queue_name=QUEUE_NAME, error_category="cache_load_error"
