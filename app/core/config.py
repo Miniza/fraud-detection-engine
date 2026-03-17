@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     ENABLE_METRICS: bool = True
     SQS_WAIT_TIMEOUT: int = 20
     SQS_MAX_MESSAGES: int = 10
+    CACHE_RETRY_DELAY: int = 5
+    CACHE_MAX_RETRY_DELAY: int = 300
 
     @property
     def TOPIC_ARN(self) -> str:

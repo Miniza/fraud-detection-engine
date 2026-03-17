@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from decimal import Decimal
 from typing import Optional
+from typing import List
 
 
 class TransactionCreate(BaseModel):
@@ -14,3 +15,19 @@ class TransactionCreate(BaseModel):
     @classmethod
     def uppercase_currency(cls, v: str) -> str:
         return v.upper()
+
+
+class TransactionAlert(BaseModel):
+    rule: str
+    reason: str
+
+
+class FraudSummary(BaseModel):
+    is_flagged: bool
+    alerts: List[TransactionAlert]
+
+
+class TransactionResponse(BaseModel):
+    transaction_id: str
+    status: str
+    fraud_summary: FraudSummary

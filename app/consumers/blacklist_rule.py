@@ -61,8 +61,11 @@ async def handle_blacklist_rule(transaction_id: str, merchant_id: str) -> bool:
 
 
 async def refresh_blacklist_cache():
-    """Syncs in-memory set with the database every 5 minutes."""
+    """Syncs in-memory set with the database with exponential backoff on failure."""
     global BLACK_LIST_CACHE
+    retry_delay = settings.CACHE_RETRY_DELAY
+    max_retry_delay = settings.CACHE_MAX_RETRY_DELAY
+
     while True:
         try:
             async with SessionLocal() as db:
@@ -72,10 +75,16 @@ async def refresh_blacklist_cache():
                 logger.info(
                     f"Blacklist Cache Synced: {len(BLACK_LIST_CACHE)} merchants loaded."
                 )
+                # Reset retry delay on success
+                retry_delay = retry_delay
+                await asyncio.sleep(max_retry_delay)
         except Exception as e:
-            logger.error(f"Cache refresh failed: {e}", exc_info=True)
-
-        await asyncio.sleep(300)
+            logger.error(
+                f"Cache refresh failed: {e}. Retrying in {retry_delay}s...",
+                exc_info=True,
+            )
+            await asyncio.sleep(retry_delay)
+            retry_delay = min(retry_delay * 2, max_retry_delay)  # Exp backoff
 
 
 async def process_blacklist_rule():
@@ -110,7 +119,9 @@ async def process_blacklist_rule():
         MESSAGE_PROCESSING_ERRORS.labels(
             queue_name=QUEUE_NAME, error_category="cache_load_error"
         ).inc()
-        print(f"Initial cache load failed, starting anyway: {e}")
+        logger.warning(
+            f"Initial cache load failed, starting anyway: {e}", exc_info=True
+        )
 
     asyncio.create_task(refresh_blacklist_cache())
 
@@ -159,14 +170,14 @@ async def process_blacklist_rule():
                         MESSAGE_PROCESSING_ERRORS.labels(
                             queue_name=QUEUE_NAME, error_category="parsing_error"
                         ).inc()
-                        print(f"Error processing message: {e}")
+                        logger.error(f"Error processing message: {e}", exc_info=True)
 
         except Exception as e:
             WORKER_HEALTH.labels(worker_name=worker_name).set(0)
             MESSAGE_PROCESSING_ERRORS.labels(
                 queue_name=QUEUE_NAME, error_category="sqs_error"
             ).inc()
-            print(f"SQS Error: {e}")
+            logger.error(f"SQS Error: {e}", exc_info=True)
             await asyncio.sleep(5)
 
 
@@ -174,4 +185,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(process_blacklist_rule())
     except KeyboardInterrupt:
-        print("Stopping Blacklist Worker...")
+        logger.info("Stopping Blacklist Worker...")

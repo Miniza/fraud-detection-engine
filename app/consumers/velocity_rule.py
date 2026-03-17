@@ -1,5 +1,6 @@
 import json
 import asyncio
+import uuid
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, func
 from app.core.aws_client import get_boto_client
@@ -49,7 +50,7 @@ async def handle_velocity_rule(transaction_id: str, user_id: str) -> bool:
             )
 
             alert = FraudAlert(
-                transaction_id=transaction_id,
+                transaction_id=uuid.UUID(transaction_id),
                 rule_name="VELOCITY_RULE",
                 is_flagged=is_flagged,
                 reason=reason,
@@ -135,14 +136,14 @@ async def process_velocity_rule():
                         MESSAGE_PROCESSING_ERRORS.labels(
                             queue_name=QUEUE_NAME, error_category="parsing_error"
                         ).inc()
-                        print(f"Error processing message: {e}")
+                        logger.error(f"Error processing message: {e}", exc_info=True)
 
         except Exception as e:
             WORKER_HEALTH.labels(worker_name=worker_name).set(0)
             MESSAGE_PROCESSING_ERRORS.labels(
                 queue_name=QUEUE_NAME, error_category="sqs_error"
             ).inc()
-            print(f"SQS Error: {e}")
+            logger.error(f"SQS Error: {e}", exc_info=True)
             await asyncio.sleep(5)
 
 
@@ -150,4 +151,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(process_velocity_rule())
     except KeyboardInterrupt:
-        print("Stopping Velocity Worker...")
+        logger.info("Stopping Velocity Worker...")

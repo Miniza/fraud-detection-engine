@@ -1,5 +1,6 @@
 import json
 import asyncio
+import uuid
 from app.core.aws_client import get_boto_client
 from app.core.config import settings
 from app.infrastructure.database_setup import SessionLocal
@@ -36,7 +37,7 @@ async def handle_amount_rule(transaction_id: str, amount: float) -> bool:
 
         async with SessionLocal() as db:
             alert = FraudAlert(
-                transaction_id=transaction_id,
+                transaction_id=uuid.UUID(transaction_id),
                 rule_name="HIGH_AMOUNT_RULE",
                 is_flagged=is_flagged,
                 reason=reason,
@@ -123,14 +124,14 @@ async def process_amount_rule():
                         MESSAGE_PROCESSING_ERRORS.labels(
                             queue_name=QUEUE_NAME, error_category="parsing_error"
                         ).inc()
-                        print(f"Error processing message: {e}")
+                        logger.error(f"Error processing message: {e}", exc_info=True)
 
         except Exception as e:
             WORKER_HEALTH.labels(worker_name=worker_name).set(0)
             MESSAGE_PROCESSING_ERRORS.labels(
                 queue_name=QUEUE_NAME, error_category="sqs_error"
             ).inc()
-            print(f"SQS Error: {e}")
+            logger.error(f"SQS Error: {e}", exc_info=True)
             await asyncio.sleep(5)
 
 
@@ -138,4 +139,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(process_amount_rule())
     except KeyboardInterrupt:
-        print("Stopping Amount Rule Worker...")
+        logger.info("Stopping Amount Rule Worker...")

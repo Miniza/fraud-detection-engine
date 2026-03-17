@@ -7,7 +7,31 @@ from app.core.logger import get_logger
 logger = get_logger(__name__)
 
 
+class TransactionNotFoundError(Exception):
+    """Raised when a transaction cannot be found by ID."""
+
+    def __init__(self, transaction_id: str):
+        self.transaction_id = transaction_id
+        super().__init__(f"Transaction {transaction_id} not found")
+
+
 def register_exception_handlers(app: FastAPI):
+
+    @app.exception_handler(TransactionNotFoundError)
+    async def transaction_not_found_handler(
+        request: Request, exc: TransactionNotFoundError
+    ):
+        """Handle transaction lookup failures."""
+        logger.warning(
+            f"Transaction not found: {exc.transaction_id} on {request.method} {request.url.path}"
+        )
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "error": "NOT_FOUND",
+                "message": f"Transaction {exc.transaction_id} not found.",
+            },
+        )
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(
