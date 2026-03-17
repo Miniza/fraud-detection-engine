@@ -7,7 +7,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     UniqueConstraint,
-    text,  # Added this
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
@@ -51,7 +51,6 @@ class Transaction(Base):
 class FraudAlert(Base):
     __tablename__ = "fraud_alerts"
 
-    # For consistency, use server_default or default for the ID
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     transaction_id = Column(
         PG_UUID(as_uuid=True),

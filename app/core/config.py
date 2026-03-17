@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     VELOCITY_THRESHOLD: int = 3
     PROMETHEUS_METRICS_PORT: int = 9000
     ENABLE_METRICS: bool = True
+    SQS_WAIT_TIMEOUT: int = 20
+    SQS_MAX_MESSAGES: int = 10
 
     @property
     def TOPIC_ARN(self) -> str:

@@ -4,7 +4,14 @@ from sqlalchemy import select, func
 from app.core.aws_client import get_boto_client
 from app.core.config import settings
 from app.infrastructure.models import FraudAlert, Transaction
-from app.core.metrics import start_metrics_server, RULE_LATENCY, TX_PROCESSED_TOTAL
+from app.core.metrics import (
+    start_metrics_server,
+    RULE_LATENCY,
+    TX_PROCESSED_TOTAL,
+    SQS_QUEUE_DEPTH,
+    WORKER_HEALTH,
+    MESSAGE_PROCESSING_ERRORS,
+)
 from app.core.idempotency import idempotent_worker
 from app.core.resilience import get_resilient_db
 from circuitbreaker import CircuitBreakerError
@@ -12,7 +19,7 @@ from circuitbreaker import CircuitBreakerError
 QUEUE_NAME = "aggregator-queue"
 
 
-@idempotent_worker(rule_name="aggregator")
+@idempotent_worker(rule_name="AGGREGATOR")
 async def handle_aggregation(
     transaction_id: str, msg_receipt: str, queue_url: str, sqs_client
 ):
@@ -32,7 +39,7 @@ async def handle_aggregation(
 
             if alerts_count < settings.EXPECTED_RULES_COUNT:
                 print(
-                    f"⏳ Waiting for rules: {alerts_count}/{settings.EXPECTED_RULES_COUNT} for {transaction_id}"
+                    f"...Waiting for rules: {alerts_count}/{settings.EXPECTED_RULES_COUNT} for {transaction_id}"
                 )
                 return False
 
@@ -62,29 +69,37 @@ async def handle_aggregation(
             return True
 
     except CircuitBreakerError:
-        # If the DB is down, the circuit opens. We fail fast and log it.
+        MESSAGE_PROCESSING_ERRORS.labels(
+            queue_name=QUEUE_NAME, error_category="circuit_breaker_open"
+        ).inc()
         print(
             f"Circuit Open: Skipping DB work for {transaction_id}. DB might be under load."
         )
-        return False  # Return False so SQS retries and the ledger isn't updated
+        return False
     except Exception as e:
+        MESSAGE_PROCESSING_ERRORS.labels(
+            queue_name=QUEUE_NAME, error_category="aggregation_error"
+        ).inc()
         print(f"Aggregator Error: {e}")
         return False
-
-
-# --- 2. The Worker Loop ---
 
 
 async def run_worker():
     start_metrics_server()
     sqs = get_boto_client("sqs")
     queue_url = None
+    worker_name = "aggregator_worker"
 
     while not queue_url:
         try:
             response = sqs.get_queue_url(QueueName=QUEUE_NAME)
             queue_url = response["QueueUrl"]
-        except Exception:
+            WORKER_HEALTH.labels(worker_name=worker_name).set(1)
+        except Exception as e:
+            WORKER_HEALTH.labels(worker_name=worker_name).set(0)
+            MESSAGE_PROCESSING_ERRORS.labels(
+                queue_name=QUEUE_NAME, error_category="connection_error"
+            ).inc()
             await asyncio.sleep(2)
 
     print(f"🚀 Aggregator listening on {QUEUE_NAME}...")
@@ -92,8 +107,21 @@ async def run_worker():
     while True:
         try:
             response = sqs.receive_message(
-                QueueUrl=queue_url, MaxNumberOfMessages=1, WaitTimeSeconds=10
+                QueueUrl=queue_url,
+                MaxNumberOfMessages=settings.SQS_MAX_MESSAGES,
+                WaitTimeSeconds=settings.SQS_WAIT_TIMEOUT,
+                AttributeNames=["ApproximateNumberOfMessages"],
             )
+
+            # Track queue depth
+            if "Attributes" in response:
+                queue_depth = int(
+                    response["Attributes"].get("ApproximateNumberOfMessages", 0)
+                )
+                SQS_QUEUE_DEPTH.labels(queue_name=QUEUE_NAME).set(queue_depth)
+
+            # Mark worker as healthy
+            WORKER_HEALTH.labels(worker_name=worker_name).set(1)
 
             if "Messages" not in response:
                 continue
@@ -115,10 +143,17 @@ async def run_worker():
                             sqs_client=sqs,
                         )
                     except Exception as e:
-                        print(f"❌ Processing Error: {e}")
+                        MESSAGE_PROCESSING_ERRORS.labels(
+                            queue_name=QUEUE_NAME, error_category="parsing_error"
+                        ).inc()
+                        print(f"Processing Error: {e}")
 
         except Exception as e:
-            print(f"❌ SQS Connection Error: {e}")
+            WORKER_HEALTH.labels(worker_name=worker_name).set(0)
+            MESSAGE_PROCESSING_ERRORS.labels(
+                queue_name=QUEUE_NAME, error_category="sqs_error"
+            ).inc()
+            print(f"SQS Connection Error: {e}")
             await asyncio.sleep(5)
 
 

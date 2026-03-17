@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from app.infrastructure.database_setup import engine
 from app.core.config import settings
 from app.api.exceptions import register_exception_handlers
 from app.api.routes import transactions
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-from app.core.metrics import REGISTRY
+from app.core.metrics import REGISTRY, API_REQUEST_LATENCY
+import time
 
 
 @asynccontextmanager
@@ -19,6 +20,25 @@ app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 register_exception_handlers(app)
 
 app.include_router(transactions.router)
+
+
+@app.middleware("http")
+async def add_metrics_middleware(request: Request, call_next):
+    """Record API endpoint latency metrics."""
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+
+    # Extract endpoint path (remove path parameters for consistent metric labels)
+    endpoint = request.url.path
+    method = request.method
+    status_code = response.status_code
+
+    API_REQUEST_LATENCY.labels(
+        method=method, endpoint=endpoint, status_code=status_code
+    ).observe(process_time)
+
+    return response
 
 
 @app.get("/health")

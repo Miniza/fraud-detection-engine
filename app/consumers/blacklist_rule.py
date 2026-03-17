@@ -6,10 +6,54 @@ from app.core.aws_client import get_boto_client
 from app.core.config import settings
 from app.infrastructure.database_setup import SessionLocal
 from app.infrastructure.models import FraudAlert, BlacklistedMerchant
-from app.core.metrics import start_metrics_server, RULE_LATENCY, TX_PROCESSED_TOTAL
+from app.core.metrics import (
+    start_metrics_server,
+    RULE_LATENCY,
+    TX_PROCESSED_TOTAL,
+    SQS_QUEUE_DEPTH,
+    WORKER_HEALTH,
+    MESSAGE_PROCESSING_ERRORS,
+)
+from app.core.idempotency import idempotent_worker
 
 QUEUE_NAME = "blacklist-queue"
 BLACK_LIST_CACHE = set()
+
+
+@idempotent_worker(rule_name="BLACKLIST_RULE")
+async def handle_blacklist_rule(transaction_id: str, merchant_id: str) -> bool:
+    """
+    Checks if merchant is in the blacklist.
+    Protected by idempotency - only executes once per transaction.
+    """
+    try:
+        is_flagged = merchant_id in BLACK_LIST_CACHE
+        reason = (
+            f"Merchant {merchant_id} is blacklisted"
+            if is_flagged
+            else "Merchant cleared"
+        )
+
+        async with SessionLocal() as db:
+            alert = FraudAlert(
+                transaction_id=uuid.UUID(transaction_id),
+                rule_name="BLACKLIST_RULE",
+                is_flagged=is_flagged,
+                reason=reason,
+            )
+            db.add(alert)
+            await db.commit()
+
+        res_label = "flagged" if is_flagged else "cleared"
+        TX_PROCESSED_TOTAL.labels(service="blacklist_rule", status=res_label).inc()
+
+        print(f"[Blacklist Rule] TX {transaction_id}: {res_label.upper()}")
+        return True
+    except Exception as e:
+        MESSAGE_PROCESSING_ERRORS.labels(
+            queue_name=QUEUE_NAME, error_category="processing_error"
+        ).inc()
+        raise
 
 
 async def refresh_blacklist_cache():
@@ -32,17 +76,22 @@ async def refresh_blacklist_cache():
 
 async def process_blacklist_rule():
     start_metrics_server()
-
     sqs = get_boto_client("sqs")
     queue_url = None
+    worker_name = "blacklist_rule_worker"
 
     print(f"Blacklist Rule Worker waiting for '{QUEUE_NAME}'...")
     while not queue_url:
         try:
             response = sqs.get_queue_url(QueueName=QUEUE_NAME)
             queue_url = response["QueueUrl"]
+            WORKER_HEALTH.labels(worker_name=worker_name).set(1)
             print(f"🚀 Blacklist Rule connected to: {queue_url}")
-        except Exception:
+        except Exception as e:
+            WORKER_HEALTH.labels(worker_name=worker_name).set(0)
+            MESSAGE_PROCESSING_ERRORS.labels(
+                queue_name=QUEUE_NAME, error_category="connection_error"
+            ).inc()
             await asyncio.sleep(2)
 
     try:
@@ -52,6 +101,9 @@ async def process_blacklist_rule():
             BLACK_LIST_CACHE = set(result.scalars().all())
             print(f"Initial Blacklist Cache Loaded: {len(BLACK_LIST_CACHE)} items.")
     except Exception as e:
+        MESSAGE_PROCESSING_ERRORS.labels(
+            queue_name=QUEUE_NAME, error_category="cache_load_error"
+        ).inc()
         print(f"Initial cache load failed, starting anyway: {e}")
 
     asyncio.create_task(refresh_blacklist_cache())
@@ -59,8 +111,21 @@ async def process_blacklist_rule():
     while True:
         try:
             response = sqs.receive_message(
-                QueueUrl=queue_url, MaxNumberOfMessages=1, WaitTimeSeconds=10
+                QueueUrl=queue_url,
+                MaxNumberOfMessages=settings.SQS_MAX_MESSAGES,
+                WaitTimeSeconds=settings.SQS_WAIT_TIMEOUT,
+                AttributeNames=["ApproximateNumberOfMessages"],
             )
+
+            # Track queue depth
+            if "Attributes" in response:
+                queue_depth = int(
+                    response["Attributes"].get("ApproximateNumberOfMessages", 0)
+                )
+                SQS_QUEUE_DEPTH.labels(queue_name=QUEUE_NAME).set(queue_depth)
+
+            # Mark worker as healthy
+            WORKER_HEALTH.labels(worker_name=worker_name).set(1)
 
             if "Messages" not in response:
                 continue
@@ -73,42 +138,28 @@ async def process_blacklist_rule():
                             json.loads(body["Message"]) if "Message" in body else body
                         )
 
-                        tx_id = uuid.UUID(data["transaction_id"])
+                        tx_id = data["transaction_id"]
                         merchant_id = data.get("merchant_id")
 
-                        is_flagged = merchant_id in BLACK_LIST_CACHE
-                        reason = (
-                            f"Merchant {merchant_id} is blacklisted"
-                            if is_flagged
-                            else "Merchant cleared"
-                        )
+                        # Call the idempotent handler
+                        success = await handle_blacklist_rule(tx_id, merchant_id)
 
-                        async with SessionLocal() as db:
-                            alert = FraudAlert(
-                                transaction_id=tx_id,
-                                rule_name="BLACKLIST_RULE",
-                                is_flagged=is_flagged,
-                                reason=reason,
+                        if success:
+                            sqs.delete_message(
+                                QueueUrl=queue_url, ReceiptHandle=msg["ReceiptHandle"]
                             )
-                            db.add(alert)
-                            await db.commit()
-
-                        # 5. Increment Business Metric
-                        res_label = "flagged" if is_flagged else "cleared"
-                        TX_PROCESSED_TOTAL.labels(
-                            service="blacklist_rule", status=res_label
-                        ).inc()
-
-                        print(f"[Blacklist Rule] TX {tx_id}: {res_label.upper()}")
-
-                        sqs.delete_message(
-                            QueueUrl=queue_url, ReceiptHandle=msg["ReceiptHandle"]
-                        )
 
                     except Exception as e:
+                        MESSAGE_PROCESSING_ERRORS.labels(
+                            queue_name=QUEUE_NAME, error_category="parsing_error"
+                        ).inc()
                         print(f"Error processing message: {e}")
 
         except Exception as e:
+            WORKER_HEALTH.labels(worker_name=worker_name).set(0)
+            MESSAGE_PROCESSING_ERRORS.labels(
+                queue_name=QUEUE_NAME, error_category="sqs_error"
+            ).inc()
             print(f"SQS Error: {e}")
             await asyncio.sleep(5)
 
