@@ -184,6 +184,19 @@ The circuit breaker operates in three states:
 
 ---
 
+## CI/CD Pipeline
+
+This project includes a GitHub Actions CI pipeline that:
+
+- Runs unit tests
+- Builds the Docker image
+- Spins up the full system using Docker Compose
+- Performs a smoke test on the API
+
+[![CI](https://github.com/Miniza/fraud-detection-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/Miniza/fraud-detection-engine/actions)
+
+---
+
 # Quick Start
 
 ## Prerequisites

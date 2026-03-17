@@ -47,7 +47,7 @@ jobs:
             sleep 5
           done
 
-      - name: Smoke test API
+      - name: Test API
         run: |
           curl -X POST http://localhost:8000/transactions \
           -H "Content-Type: application/json" \
@@ -59,7 +59,6 @@ jobs:
             "merchant_category": "Test"
           }'
 
-      # ✅ Tear down
       - name: Stop services
         if: always()
         run: docker compose down -v
