@@ -22,7 +22,17 @@ async def lifespan(app: FastAPI):
         await engine.dispose()
 
 
-app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    lifespan=lifespan,
+    description="This a Distributed System That Does Financial Fraud Checks Against a Transaction. 🚀",
+    version="1.0.0",
+    contact={
+        "name": "Minenhle Dlamini",
+        "url": "https://www.linkedin.com/in/minenhle-dlamini-803588197",
+        "email": "minenhledlamini37@gmail.com",
+    },
+)
 
 register_exception_handlers(app)
 

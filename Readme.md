@@ -226,6 +226,8 @@ Build and start all services:
 docker compose up --build -d
 ```
 
+## NB: Make Sure all services are healthy, in a rare situation that one is unhealthy run the command again. a Stable Internet Connection is also important for the project to quickly startup for the first time...
+
 This starts:
 
 - FastAPI API
