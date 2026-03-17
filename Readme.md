@@ -773,5 +773,6 @@ Potential enhancements:
 - Distributed tracing (OpenTelemetry)
 - Multi-region deployment
 - Add Dead Letter Queues for messages that fail processing
+- For Production, managing a distributed system like this one will require use of Terraform to model the infrastructure
 
 ---
