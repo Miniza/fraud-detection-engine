@@ -5,7 +5,10 @@ Unit tests for exception handling.
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from app.api.exceptions import register_exception_handlers, TransactionNotFoundError
+from app.api.exception_handlers import (
+    register_exception_handlers,
+    TransactionNotFoundError,
+)
 from sqlalchemy.exc import IntegrityError
 
 

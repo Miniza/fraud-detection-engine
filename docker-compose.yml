@@ -90,7 +90,6 @@ services:
     build: .
     container_name: worker_amount
     command: python app/consumers/amount_rule.py
-    environment: &worker-env
       - DATABASE_URL=postgresql+asyncpg://admin:capitec_secret@db:5432/fraud_engine_db
       - AWS_ENDPOINT_URL=http://aws-mock:5000
       - AWS_REGION=af-south-1
@@ -113,7 +112,6 @@ services:
     build: .
     container_name: worker_blacklist
     command: python app/consumers/blacklist_rule.py
-    environment: *worker-env
     depends_on:
       db:
         condition: service_healthy
@@ -124,7 +122,6 @@ services:
     build: .
     container_name: worker_velocity
     command: python app/consumers/velocity_rule.py
-    environment: *worker-env
     depends_on:
       db:
         condition: service_healthy
@@ -135,7 +132,6 @@ services:
     build: .
     container_name: worker_aggregator
     command: python app/consumers/aggregator.py
-    environment: *worker-env
     depends_on:
       db:
         condition: service_healthy

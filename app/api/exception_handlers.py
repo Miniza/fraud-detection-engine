@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class TransactionNotFoundError(Exception):
-    """Raised when a transaction cannot be found by ID."""
-
     def __init__(self, transaction_id: str):
         self.transaction_id = transaction_id
         super().__init__(f"Transaction {transaction_id} not found")

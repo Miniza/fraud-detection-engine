@@ -14,13 +14,15 @@ from app.core.metrics import (
 )
 from app.core.idempotency import idempotent_worker, get_db_session
 from app.core.logger import get_logger
+from app.core.rules_config import is_rule_enabled
 
 logger = get_logger(__name__)
 
 QUEUE_NAME = "amount-queue"
+RULE_NAME = "HIGH_AMOUNT_RULE"
 
 
-@idempotent_worker(rule_name="HIGH_AMOUNT_RULE")
+@idempotent_worker(rule_name=RULE_NAME)
 async def handle_amount_rule(transaction_id: str, amount: float) -> bool:
     """
     Evaluates if transaction amount exceeds threshold.
@@ -110,6 +112,15 @@ async def process_amount_rule():
 
                         tx_id = data["transaction_id"]
                         amount = float(data["amount"])
+
+                        if not await is_rule_enabled(RULE_NAME):
+                            logger.warning(
+                                f"Rule {RULE_NAME} is disabled. Skipping TX {tx_id}..."
+                            )
+                            sqs.delete_message(
+                                QueueUrl=queue_url, ReceiptHandle=msg["ReceiptHandle"]
+                            )
+                            continue
 
                         # Call the idempotent handler
                         success = await handle_amount_rule(tx_id, amount)

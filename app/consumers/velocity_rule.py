@@ -16,13 +16,15 @@ from app.core.metrics import (
 )
 from app.core.idempotency import idempotent_worker, get_db_session
 from app.core.logger import get_logger
+from app.core.rules_config import is_rule_enabled
 
 logger = get_logger(__name__)
 
 QUEUE_NAME = "velocity-queue"
+RULE_NAME = "VELOCITY_RULE"
 
 
-@idempotent_worker(rule_name="VELOCITY_RULE")
+@idempotent_worker(rule_name=RULE_NAME)
 async def handle_velocity_rule(transaction_id: str, user_id: str) -> bool:
     """
     Detects rapid transaction patterns within a time window.
@@ -122,6 +124,15 @@ async def process_velocity_rule():
 
                         tx_id = data["transaction_id"]
                         user_id = data["user_id"]
+
+                        if not await is_rule_enabled(RULE_NAME):
+                            logger.warning(
+                                f"Rule {RULE_NAME} is disabled. Skipping TX {tx_id}..."
+                            )
+                            sqs.delete_message(
+                                QueueUrl=queue_url, ReceiptHandle=msg["ReceiptHandle"]
+                            )
+                            continue
 
                         # Call the idempotent handler
                         success = await handle_velocity_rule(tx_id, user_id)

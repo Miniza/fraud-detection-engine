@@ -15,14 +15,16 @@ from app.core.metrics import (
 )
 from app.core.idempotency import idempotent_worker, get_db_session
 from app.core.logger import get_logger
+from app.core.rules_config import is_rule_enabled
 
 logger = get_logger(__name__)
 
 QUEUE_NAME = "blacklist-queue"
 BLACK_LIST_CACHE = set()
+RULE_NAME = "BLACKLIST_RULE"
 
 
-@idempotent_worker(rule_name="BLACKLIST_RULE")
+@idempotent_worker(rule_name=RULE_NAME)
 async def handle_blacklist_rule(transaction_id: str, merchant_id: str) -> bool:
     """
     Checks if merchant is in the blacklist.
@@ -157,6 +159,14 @@ async def process_blacklist_rule():
                         tx_id = data["transaction_id"]
                         merchant_id = data.get("merchant_id")
 
+                        if not await is_rule_enabled(RULE_NAME):
+                            logger.warning(
+                                f"Rule {RULE_NAME} is disabled. Skipping TX {tx_id}..."
+                            )
+                            sqs.delete_message(
+                                QueueUrl=queue_url, ReceiptHandle=msg["ReceiptHandle"]
+                            )
+                            continue
                         # Call the idempotent handler
                         success = await handle_blacklist_rule(tx_id, merchant_id)
 

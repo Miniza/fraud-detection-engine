@@ -1,3 +1,9 @@
+CREATE TABLE IF NOT EXISTS fraud_rules_config (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE
+);
+
 CREATE TABLE IF NOT EXISTS transactions (
     id UUID PRIMARY KEY,
     user_id VARCHAR(50) NOT NULL,
@@ -34,24 +40,22 @@ CREATE TABLE IF NOT EXISTS processed_events (
     CONSTRAINT uq_tx_rule UNIQUE (transaction_id, rule_name)
 );
 
--- whitelist/blacklist data for testing and demo purposes
+INSERT INTO fraud_rules_config  (name, enabled) 
+VALUES
+    ('HIGH_AMOUNT_RULE', TRUE),
+    ('BLACKLIST_RULE', TRUE),
+    ('VELOCITY_RULE', TRUE);
+
+
+-- blacklist data for testing and demo purposes
 INSERT INTO blacklisted_merchants (merchant_id, reason)
 VALUES 
-    -- High Risk/Fraudulent Entities
     ('merch_999', 'Confirmed Phishing Site - Operation Red October'),
     ('scam_central_01', 'Associated with known card-cloning ring'),
     ('fake_invest_ltd', 'Unregulated financial entity - Ponzi scheme alert'),
     ('dark_web_gateway', 'High frequency of stolen credential usage'),
-    
-    -- High Chargeback/Risk Categories
-    ('bet_fast_now', 'Excessive chargeback rate > 5%'),
     ('crypto_mixer_xyz', 'High-risk anonymity service'),
-    ('anonymous_vpn_provider', 'Commonly used for location spoofing'),
-    
-    -- Specific Test Cases for Your Demo
-    ('test_fraud_001', 'Internal Testing: Manual Block'),
-    ('bad_actor_global', 'International AML (Anti-Money Laundering) flag'),
-    ('suspicious_electronics_store', 'Reported for non-delivery of goods')
+    ('anonymous_vpn_provider', 'Commonly used for location spoofing')
 ON CONFLICT (merchant_id) DO NOTHING;
 
 CREATE INDEX idx_fraud_alerts_transaction_id ON fraud_alerts(transaction_id);

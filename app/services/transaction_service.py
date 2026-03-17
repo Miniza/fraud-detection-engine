@@ -4,7 +4,7 @@ from app.infrastructure.models import Transaction
 from app.api.schemas import TransactionCreate
 from app.core.config import settings
 from app.infrastructure.repositories import TransactionRepository
-from app.api.exceptions import TransactionNotFoundError
+from app.api.exception_handlers import TransactionNotFoundError
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)

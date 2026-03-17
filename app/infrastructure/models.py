@@ -71,3 +71,11 @@ class BlacklistedMerchant(Base):
     merchant_id = Column(String, unique=True, nullable=False, index=True)
     reason = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class RulesConfig(Base):
+    __tablename__ = "fraud_rules_config"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    enabled = Column(Boolean, default=True)

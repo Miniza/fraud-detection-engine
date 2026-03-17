@@ -42,7 +42,6 @@ def idempotent_worker(rule_name: str):
             get_db_session = globals()["get_db_session"]
 
             async with get_db_session() as db:
-                # Convert transaction_id to UUID if string
                 tx_uuid = (
                     uuid.UUID(transaction_id)
                     if isinstance(transaction_id, str)
