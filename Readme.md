@@ -156,17 +156,17 @@ The circuit breaker operates in three states:
 
 # Tech Stack
 
-| Component        | Technology               |
-| ---------------- | ------------------------ |
-| Language         | Python 3.11              |
-| Framework        | FastAPI                  |
-| Database         | PostgreSQL 16            |
-| ORM              | SQLAlchemy 2.0 + Asyncpg |
-| Messaging        | AWS SNS & SQS            |
-| AWS Mock         | Moto Server              |
-| Observability    | Prometheus + Grafana     |
-| Containerization | Docker                   |
-| Orchestration    | Docker Compose           |
+| Component        | Technology                   |
+| ---------------- | ---------------------------- |
+| Language         | Python 3.11                  |
+| Framework        | FastAPI                      |
+| Database         | PostgreSQL 16                |
+| ORM              | SQLAlchemy 2.0 + Asyncpg     |
+| Messaging        | AWS SNS & SQS                |
+| AWS Mock         | Moto Server                  |
+| Observability    | Prometheus + Grafana         |
+| Containerization | Docker                       |
+| Orchestration    | Docker Compose/Docker Destop |
 
 ---
 
@@ -190,8 +190,7 @@ The circuit breaker operates in three states:
 
 Install the following:
 
-- Docker
-- Docker Compose
+- Docker, Docker Compose or Docker Desktop (Preffered)
 
 ---
 
@@ -214,7 +213,7 @@ cd fraud-detection-engine
 (Optional)
 
 ```bash
-code .
+code .  #opens project in vscode
 ```
 
 ---
