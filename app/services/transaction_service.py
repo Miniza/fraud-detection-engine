@@ -3,7 +3,7 @@ import json
 from app.infrastructure.models import Transaction
 from app.api.schemas import TransactionCreate
 from app.core.config import settings
-from app.infrastructure.repositories import TransactionRepository
+from app.infrastructure.repositories.transaction_repo import TransactionRepository
 from app.api.exception_handlers import TransactionNotFoundError
 from app.core.logger import get_logger
 

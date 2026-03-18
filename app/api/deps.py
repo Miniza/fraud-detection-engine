@@ -1,6 +1,6 @@
 from fastapi import Depends
 from app.infrastructure.database_setup import get_db
-from app.infrastructure.repositories import TransactionRepository
+from app.infrastructure.repositories.transaction_repo import TransactionRepository
 from app.services.transaction_service import TransactionService
 from app.core.aws_client import get_boto_client
 

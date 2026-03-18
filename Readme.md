@@ -520,6 +520,8 @@ Before running tests, ensure you have:
 1. **Python 3.11+** installed
 2. **Dependencies installed**:
 
+NB: Use requirements-dev.txt to run unit tests
+
 ```bash
 pip install -r requirements-dev.txt
 
@@ -555,31 +557,7 @@ tests/unit/test_amount_rule.py::test_low_amount_not_flagged PASSED  [  7%]
 ========================== 28 passed in 1.61s ==========================
 ```
 
-### 2. Run Tests with Verbose Output
-
-```bash
-pytest tests/unit/ -v --tb=short
-```
-
-This shows:
-
-- Each test name
-- Pass/fail status
-- Short traceback for failures
-
-### 3. Run Tests Quietly (Summary Only)
-
-```bash
-pytest tests/unit/ -q
-```
-
-Output shows just the final summary:
-
-```
-28 passed in 1.61s
-```
-
-### 4. Run Specific Test File
+### 2. Run Specific Test File
 
 ```bash
 # Test a specific rule
@@ -592,95 +570,6 @@ pytest tests/unit/test_idempotency.py -v
 pytest tests/unit/test_transaction_service.py -v
 ```
 
-### 5. Run Specific Test Function
-
-```bash
-pytest tests/unit/test_amount_rule.py::test_high_amount_flagged -v
-```
-
-### 6. Run Tests and Stop on First Failure
-
-```bash
-pytest tests/unit/ -v -x
-```
-
-### 7. Run Tests with Coverage Report
-
-```bash
-# Generate HTML coverage report
-pytest tests/unit/ --cov=app --cov-report=html
-
-# View report (opens in browser)
-# Windows:
-start htmlcov/index.html
-
-# Mac:
-open htmlcov/index.html
-
-# Linux:
-xdg-open htmlcov/index.html
-```
-
-Coverage report includes:
-
-- Lines covered/executed
-- Coverage percentage per file
-- Uncovered lines highlighted
-
-### 8. Run Tests with Detailed Output
-
-```bash
-pytest tests/unit/ -v --tb=long
-```
-
-Shows full traceback and error details.
-
-### 9. Run Tests Matching a Pattern
-
-```bash
-# Run all velocity tests
-pytest tests/unit/ -v -k velocity
-
-# Run all tests with "flagged" in the name
-pytest tests/unit/ -v -k flagged
-```
-
----
-
-## Test Execution in Different Environments
-
-### Local Development (Windows/Mac/Linux)
-
-```bash
-cd fraud-detection-engine
-pytest tests/unit/ -v
-```
-
-### In Docker Container
-
-```bash
-# Build container
-docker build -t fraud-engine .
-
-# Run tests inside container
-docker run --rm fraud-engine pytest tests/unit/ -v
-```
-
-### With Docker Compose
-
-```bash
-# Start all services
-docker compose up --build -d
-
-# Run tests in a temporary service
-docker compose run --rm api pytest tests/unit/ -v
-
-# Clean up
-docker compose down
-```
-
----
-
 ## Understanding Test Results
 
 ### Passing Tests ✅
@@ -692,28 +581,6 @@ test_high_amount_flagged PASSED [  3%]
 - Test executed successfully
 - All assertions passed
 - Logic works as expected
-
-### Failing Tests ❌
-
-```
-test_high_amount_flagged FAILED [ 3%]
-AssertionError: assert False == True
-```
-
-- Test condition not met
-- Check error message for details
-- Review test code and implementation
-
-### Skipped Tests ⊘
-
-```
-test_future_feature SKIPPED
-```
-
-- Test marked with `@pytest.mark.skip`
-- Not run but tracked
-
----
 
 ## Test Categories
 
@@ -785,6 +652,8 @@ Potential enhancements:
 - Dynamic rule configuration
 - Rule versioning
 - Kafka-based streaming pipeline
+- Add Authentication Via JWT Tokens (Skipped To Make Testing Easy For Reviewers)
+- Rate Limiting (Use API Gateway, or implement Leaky Buckets)
 - Distributed tracing (OpenTelemetry)
 - Multi-region deployment
 - Add Dead Letter Queues for messages that fail processing

@@ -14,9 +14,10 @@ from app.core.metrics import (
     WORKER_HEALTH,
     MESSAGE_PROCESSING_ERRORS,
 )
-from app.core.idempotency import idempotent_worker, get_db_session
+from app.core.idempotency import idempotent_worker
 from app.core.logger import get_logger
 from app.core.rules_config import is_rule_enabled
+from app.infrastructure.db_session import get_db_session
 
 logger = get_logger(__name__)
 

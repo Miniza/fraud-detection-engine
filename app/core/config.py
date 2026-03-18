@@ -1,7 +1,7 @@
 # app/core/config.py
 from pydantic_settings import BaseSettings
 from pydantic import ConfigDict
-from .rules_config import RULES_CONFIG_CACHE
+from .rules_config import load_rules_config
 
 
 class Settings(BaseSettings):
@@ -43,9 +43,9 @@ class Settings(BaseSettings):
         return f"arn:aws:sns:{self.AWS_REGION}:{self.AWS_ACCOUNT_ID}:transaction-events"
 
     @property
-    def EXPECTED_RULES_COUNT(self) -> int:
-        """Return the current number of enabled rules in memory."""
-        return len(RULES_CONFIG_CACHE)
+    async def EXPECTED_RULES_COUNT(self) -> int:
+        rules = await load_rules_config()
+        return len(rules)
 
 
 settings = Settings()

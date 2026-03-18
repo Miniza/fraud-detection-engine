@@ -13,9 +13,10 @@ from app.core.metrics import (
     WORKER_HEALTH,
     MESSAGE_PROCESSING_ERRORS,
 )
-from app.core.idempotency import idempotent_worker, get_db_session
+from app.core.idempotency import idempotent_worker
 from app.core.logger import get_logger
 from app.core.rules_config import is_rule_enabled
+from app.infrastructure.db_session import get_db_session
 
 logger = get_logger(__name__)
 
@@ -85,7 +86,7 @@ async def refresh_blacklist_cache():
                 exc_info=True,
             )
             await asyncio.sleep(retry_delay)
-            retry_delay = min(retry_delay * 2, max_retry_delay)  # Exp backoff
+            retry_delay = min(retry_delay * 2, max_retry_delay)
 
 
 async def process_blacklist_rule():

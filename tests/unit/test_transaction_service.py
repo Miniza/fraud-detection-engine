@@ -6,7 +6,7 @@ import pytest
 import uuid
 from sqlalchemy import select
 from app.infrastructure.models import Transaction
-from app.infrastructure.repositories import TransactionRepository
+from app.infrastructure.repositories.transaction_repo import TransactionRepository
 from app.services.transaction_service import TransactionService
 from app.api.exception_handlers import TransactionNotFoundError
 from app.api.schemas import TransactionCreate

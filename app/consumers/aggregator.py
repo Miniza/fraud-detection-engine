@@ -39,10 +39,10 @@ async def handle_aggregation(
                 )
             )
             alerts_count = result.scalar()
-
-            if alerts_count < settings.EXPECTED_RULES_COUNT:
+            expected_count = await settings.EXPECTED_RULES_COUNT
+            if alerts_count < expected_count:
                 logger.info(
-                    f"Waiting for rules: {alerts_count}/{settings.EXPECTED_RULES_COUNT} for {transaction_id}"
+                    f"Waiting for rules: {alerts_count}/{expected_count} for {transaction_id}"
                 )
                 return False
 

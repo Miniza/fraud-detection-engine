@@ -1,22 +1,17 @@
 from app.infrastructure.models import RulesConfig
-from app.core.idempotency import get_db_session
 from sqlalchemy import select
-
-RULES_CONFIG_CACHE = set()
+from app.infrastructure.db_session import get_db_session
 
 
 async def load_rules_config():
-    """Loads only enabled rules from the database into memory."""
+    """Loads only enabled rules from the database"""
     async with get_db_session() as db:
         result = await db.execute(
             select(RulesConfig).where(RulesConfig.enabled.is_(True))
         )
         rules = result.scalars().all()
 
-        global RULES_CONFIG_CACHE
-        RULES_CONFIG_CACHE = set(rule.name for rule in rules)
-
-        return RULES_CONFIG_CACHE
+        return set(rule.name for rule in rules)
 
 
 async def is_rule_enabled(rule_name: str) -> bool:
