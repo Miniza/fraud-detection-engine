@@ -706,7 +706,6 @@ Tests verify:
 Potential enhancements:
 
 - Machine learning fraud scoring
-- Dynamic rule configuration
 - Rule versioning
 - Kafka-based streaming pipeline
 - Add Authentication Via JWT Tokens (Skipped To Make Testing Easy For Reviewers)
