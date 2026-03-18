@@ -149,7 +149,7 @@ async def run_worker():
                         MESSAGE_PROCESSING_ERRORS.labels(
                             queue_name=QUEUE_NAME, error_category="parsing_error"
                         ).inc()
-                        logger.error(f"❌ Processing Error: {e}", exc_info=True)
+                        logger.error(f"Processing Error: {e}", exc_info=True)
 
         except Exception as e:
             WORKER_HEALTH.labels(worker_name=worker_name).set(0)
