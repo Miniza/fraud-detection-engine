@@ -5,7 +5,7 @@
 Install test dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 The test suite uses:
@@ -19,33 +19,13 @@ The test suite uses:
 ## Run All Tests
 
 ```bash
-pytest tests/
+pytest tests/unit/ -v
 ```
 
 ## Run Specific Test File
 
 ```bash
 pytest tests/unit/test_amount_rule.py
-```
-
-## Run Tests with Coverage Report
-
-```bash
-pytest tests/ --cov=app --cov-report=html
-```
-
-Then open `htmlcov/index.html` to see coverage details.
-
-## Run Tests in Verbose Mode
-
-```bash
-pytest tests/ -v
-```
-
-## Run Only Fast Tests
-
-```bash
-pytest tests/ -m "not slow"
 ```
 
 ## Test Structure
@@ -87,16 +67,6 @@ tests/unit/test_velocity_rule.py::test_velocity_flagged_multiple_transactions PA
 ...
 
 ========================= 28 passed in 1.24s ==========================
-```
-
-## Debugging a Failed Test
-
-```bash
-# Run single test with detailed output
-pytest tests/unit/test_amount_rule.py::test_high_amount_flagged -vv
-
-# Run with pdb debugger on failure
-pytest tests/unit/test_amount_rule.py --pdb
 ```
 
 ## Test Database
