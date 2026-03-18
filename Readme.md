@@ -182,6 +182,7 @@ The circuit breaker operates in three states:
 - **Rules Configurability (Toggle)**
 - System observability with Prometheus and Grafana
 - Fully containerized development environment
+- CI/CD Implemented (Run test, build)
 
 ---
 
@@ -711,5 +712,6 @@ Potential enhancements:
 - Multi-region deployment
 - Add Dead Letter Queues for messages that fail processing
 - For Production, managing a distributed system like this one will require use of Terraform to model the infrastructure
+- Use a distributed cache or dynamoDB for rules configuration
 
 ---
