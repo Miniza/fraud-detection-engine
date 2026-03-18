@@ -167,6 +167,9 @@ The circuit breaker operates in three states:
 | Observability    | Prometheus + Grafana         |
 | Containerization | Docker                       |
 | Orchestration    | Docker Compose/Docker Destop |
+| DBEAVER          | For database Visualization   |
+
+### To Connect to DB Please use url "admin:capitec_secret@db:5432/fraud_engine_db"
 
 ---
 
