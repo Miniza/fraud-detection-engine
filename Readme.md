@@ -179,6 +179,7 @@ The circuit breaker operates in three states:
 - Async Python processing
 - **Idempotent message processing**
 - **Circuit breaker fault protection**
+- **Rules Configurability (Toggle)**
 - System observability with Prometheus and Grafana
 - Fully containerized development environment
 
@@ -335,6 +336,58 @@ GET /transactions/{transaction_id}
 ### NB: IF Status appears as PENDING, You might have to wait a few seconds for the aggragator consumer to finish deciding. The Final Result will always be either APPROVED/REJECTED
 
 ---
+
+# Get All Rules
+
+### Endpoint
+
+```
+GET /rules/all
+```
+
+### Response Example
+
+```json
+[
+  {
+    "enabled": true,
+    "id": 2,
+    "name": "BLACKLIST_RULE"
+  },
+  {
+    "enabled": true,
+    "id": 1,
+    "name": "HIGH_AMOUNT_RULE"
+  },
+  {
+    "enabled": false,
+    "id": 3,
+    "name": "VELOCITY_RULE"
+  }
+]
+```
+
+---
+
+# Toggle a Rule (Turn on or off)
+
+### Endpoint
+
+```
+PUT /rules
+```
+
+### Request Payload example
+
+```json
+{ "rule_id": 1 } //Will Toggle rule
+```
+
+### Respose example
+
+```json
+success
+```
 
 # Simulating Fraud Scenarios
 

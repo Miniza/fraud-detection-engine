@@ -43,8 +43,8 @@ services:
     healthcheck:
       test: ["CMD", "test", "-f", "/tmp/setup_done"]
       interval: 2s
-      timeout: 5s
-      retries: 10
+      timeout: 10s
+      retries: 15
 
   api:
     build: .

@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request, Response
 from app.infrastructure.database_setup import initialize_db, engine
 from app.core.config import settings
 from app.api.exception_handlers import register_exception_handlers
-from app.api.routes import transactions
+from app.api.routes import transactions, rules
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from app.core.metrics import REGISTRY, API_REQUEST_LATENCY
 from app.core.logger import get_logger
@@ -37,6 +37,7 @@ app = FastAPI(
 register_exception_handlers(app)
 
 app.include_router(transactions.router)
+app.include_router(rules.router)
 
 
 @app.middleware("http")
